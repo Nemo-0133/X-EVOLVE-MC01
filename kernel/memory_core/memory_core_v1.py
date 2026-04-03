@@ -138,3 +138,11 @@ class IEMemoryCore:
             "TOLERANCE": round(self.tolerance, 3),
             "STATUS": "ACTIVE" if self.resource_lock_level < 0.8 else "STRESSED"
         }
+
+def export_state(self):
+    return {
+        "pain": self.resource_lock_level,
+        "tolerance": self.tolerance,
+        "l1_size": len(self.storage["L1_CORE"]),
+        "l2_size": len(self.storage["L2_ARCHIVE"]),
+    }
