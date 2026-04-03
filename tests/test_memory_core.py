@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append(os.getcwd())
+
 from kernel.memory_core.memory_core_v1 import IEMemoryCore
 
 core = IEMemoryCore()
