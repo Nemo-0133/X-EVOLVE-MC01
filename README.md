@@ -126,4 +126,6 @@ X-EVOLVE Initiative
 
 `v0.1 - Adaptive Filtering Stable`
 
+System now supports mutation-driven instability via external engine (MU01).
+
 Next Phase: Mutation Layer
