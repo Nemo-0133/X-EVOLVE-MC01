@@ -8,7 +8,7 @@ class MC01_MemoryCore:
             "L1_CORE": {},
             "L2_ARCHIVE": {},
             "L3_BUFFER": {},
-            "PERMANENT_CONSENSUS": {} # 新增：不受壓縮影響的管理員共識區
+            "PERMANENT_CONSENSUS": {}
         }
         self.config = {
             "l1_capacity": l1_capacity,
@@ -27,12 +27,10 @@ class MC01_MemoryCore:
         dv = data_packet.get('delta_v', 0)
         ds = data_packet.get('delta_s', 0)
 
-        # 1. 永久鎖定判定 (高思辨價值或 Nemo 直接指定的共識)
         if ds >= 0.9 or data_packet.get('is_consensus'):
             self._write_permanent(entry_id, processed_content, ds)
             return {"status": "PERMANENT_LOCKED", "id": entry_id, "lock_level": self.resource_lock_level}
 
-        # 2. 壓力狀態
         if self.resource_lock_level > 0.8:
             reduced_ds = ds * 0.3
             if reduced_ds > 0.5:
@@ -41,7 +39,6 @@ class MC01_MemoryCore:
                 self._write_l2(entry_id, processed_content, dv, reduced_ds)
             return {"status": "STRESSED_FILTERING", "id": entry_id, "lock_level": round(self.resource_lock_level, 3)}
 
-        # 3. 正常分流
         if ds >= self.config["s_threshold"]:
             self._write_l1(entry_id, processed_content, ds)
         elif dv >= self.config["v_threshold"] or ds >= 0.4:
@@ -52,7 +49,6 @@ class MC01_MemoryCore:
         return {"status": "SUCCESS", "id": entry_id, "lock_level": round(self.resource_lock_level, 3)}
 
     def _write_permanent(self, uid, content, ds):
-        """寫入系統公理與底層共識，永遠不會被老化或壓縮"""
         self.storage["PERMANENT_CONSENSUS"][uid] = {
             "timestamp": time.time(),
             "content": content,
@@ -67,7 +63,6 @@ class MC01_MemoryCore:
         return f"[STRUCTURAL_LOGIC]: {content}"
 
     def _write_l1(self, uid, content, ds):
-        # 當 L1 滿載時，觸發壓縮機制而非直接刪除
         if len(self.storage["L1_CORE"]) >= self.config["l1_capacity"]:
             self.compress_memory()
 
@@ -77,7 +72,6 @@ class MC01_MemoryCore:
             "impact_score": ds
         }
 
-        # 痛覺與學習計算
         effective_ds = ds * (1 - self.tolerance)
         self.resource_lock_level += effective_ds * (0.4 * (1 - self.resource_lock_level))
         self.resource_lock_level = min(1.0, self.resource_lock_level)
@@ -96,7 +90,6 @@ class MC01_MemoryCore:
         }
 
     def compress_memory(self):
-        """將 L1 中影響力最低的記憶進行壓縮，轉移至 L2"""
         if not self.storage["L1_CORE"]:
             return
             
@@ -107,7 +100,6 @@ class MC01_MemoryCore:
         
         old_data = self.storage["L1_CORE"].pop(lowest_uid)
         
-        # 將長文本壓縮為關鍵字與摘要的邏輯結構
         compressed_content = f"[COMPRESSED_KEYSTONE] 原文本擷取: {old_data['content'][:60]}..."
         self.storage["L2_ARCHIVE"][lowest_uid] = {
             "summary": "Auto_Compressed_from_L1",
@@ -124,13 +116,11 @@ class MC01_MemoryCore:
             recovery = self.config["resilience_gamma"] * (1 + self.tolerance)
             self.resource_lock_level = max(0, self.resource_lock_level - recovery)
 
-        # 可控失穩
         if 0.75 < self.resource_lock_level < 0.85:
             drift = random.uniform(-0.05, 0.05)
             self.resource_lock_level = min(1.0, max(0, self.resource_lock_level + drift))
 
     def get_long_term_context(self):
-        """提取永久共識，供大腦對話時建立底層人格脈絡"""
         context_list = []
         for k, v in self.storage["PERMANENT_CONSENSUS"].items():
             context_list.append(v['content'])
