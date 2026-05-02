@@ -148,12 +148,24 @@ class MC01_MemoryCore:
                 del self.storage["L3_BUFFER"][uid]
                 
         if self.resource_lock_level > 0:
+            # 1. 計算基礎代謝率 (Recovery)
             recovery = self.config["resilience_gamma"] * (1 + self.tolerance)
-            self.resource_lock_level = max(0.0, self.resource_lock_level - recovery)
             
-        if 0.75 < self.resource_lock_level < 0.85:
-            drift = random.uniform(-0.05, 0.05)
-            self.resource_lock_level = min(1.0, max(0.0, self.resource_lock_level + drift))
+            # 2. 【修復後的痛覺迴盪 (Pain Reverberation) 機制】
+            # 保留前代模型的創傷閃回概念：高壓狀態下，代謝速度會變得不穩定，甚至偶爾產生刺痛回彈。
+            if self.resource_lock_level >= 0.7:
+                # 將震盪極限嚴格限制在基礎代謝率的 80%。
+                # 確保最糟情況下（drift 為最大正數），數值依然會微幅下降，徹底打破死鎖。
+                max_drift = recovery * 0.8
+                drift = random.uniform(-max_drift, max_drift)
+            else:
+                drift = 0.0
+                
+            # 3. 結算本次循環的痛覺變化：當前痛覺 - 基礎代謝 + 創傷震盪
+            self.resource_lock_level = self.resource_lock_level - recovery + drift
+            
+            # 4. 確保數值邊界安全
+            self.resource_lock_level = min(1.0, max(0.0, self.resource_lock_level))
             
         self._save_to_disk()
 
