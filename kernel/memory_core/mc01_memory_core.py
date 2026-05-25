@@ -11,7 +11,8 @@ class MC01_MemoryCore:
             "L1_CORE": {},
             "L2_ARCHIVE": {},
             "L3_BUFFER": {},
-            "PERMANENT_CONSENSUS": {}
+            "PERMANENT_CONSENSUS": {},
+            "PENDING_QUEUE": []  # --- [新增] 待處理想法緩衝區 ---
         }
         self.config = {
             "l1_capacity": l1_capacity,
@@ -32,7 +33,15 @@ class MC01_MemoryCore:
             try:
                 with open(self.storage_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.storage = data.get("storage", self.storage)
+                    loaded_storage = data.get("storage", {})
+                    
+                    # --- [修改] 安全合併邏輯，確保無痛掛載新結構 ---
+                    for k, v in loaded_storage.items():
+                        self.storage[k] = v
+                    if "PENDING_QUEUE" not in self.storage:
+                        self.storage["PENDING_QUEUE"] = []
+                    # ----------------------------------------------
+                    
                     self.resource_lock_level = data.get("resource_lock_level", 0.0)
                     self.tolerance = data.get("tolerance", 0.0)
             except Exception:
@@ -183,3 +192,31 @@ class MC01_MemoryCore:
             "l2_size": len(self.storage["L2_ARCHIVE"]),
             "permanent_size": len(self.storage["PERMANENT_CONSENSUS"])
         }
+
+    # ==========================================
+    # --- [新增] 待處理想法緩衝區 (Pending Queue) 介面 ---
+    # ==========================================
+    
+    def add_pending_thought(self, source, content):
+        """背景模組將想法寫入佇列"""
+        if "PENDING_QUEUE" not in self.storage:
+            self.storage["PENDING_QUEUE"] = []
+            
+        thought = {
+            "id": str(uuid.uuid4()),
+            "timestamp": time.time(),
+            "source": source,
+            "content": content
+        }
+        self.storage["PENDING_QUEUE"].append(thought)
+        self._save_to_disk()
+        return thought["id"]
+
+    def get_all_pending_thoughts(self):
+        """取出所有待處理的想法"""
+        return self.storage.get("PENDING_QUEUE", [])
+
+    def clear_pending_thoughts(self):
+        """清空想法佇列 (完成對話後自動代謝)"""
+        self.storage["PENDING_QUEUE"] = []
+        self._save_to_disk()
